@@ -146,6 +146,13 @@
     <div class="step" id="step4">4. Generate</div>
   </div>
 
+  <!-- PROJECT ID -->
+  <div class="section">
+    <div class="section-title"><span>🔗</span> Flow Project ID</div>
+    <input type="text" id="projectIdInput" style="width:100%;padding:12px;background:#1a1a1a;border:1.5px solid #222;border-radius:10px;color:#fff;font-size:13px;outline:none;font-family:monospace" placeholder="Flow URL se copy karo — jaise: 1bf99db1-5a7e-4721-...">
+    <div class="hint">Flow kholo → URL mein <span>/project/</span> ke baad wala ID copy karo</div>
+  </div>
+
   <!-- COOKIES -->
   <div class="section">
     <div class="section-title"><span>🍪</span> Google Flow Cookies</div>
@@ -192,7 +199,9 @@
 // ============ CONFIG ============
 const SHEET_ID = "1AdaqLyll322By7U6w51K8pFnHgfYnS2fo1gQ6XGnPOo";
 const TRIAL_MINUTES = 30;
-const PROJECT_ID = "ee852bbc-eae7-4fc7-9f4b-47b775b10fb6";
+// Project ID Flow ke URL se automatically liya jaayega
+// User ko apna Project ID daalna hoga
+const PROJECT_ID = document.getElementById('projectIdInput')?.value || "ee852bbc-eae7-4fc7-9f4b-47b775b10fb6";
 const API_URL = `https://aisandbox-pa.googleapis.com/v1/projects/${PROJECT_ID}/flowMedia:batchGenerateImages`;
 
 // ============ AUTH ============
@@ -447,6 +456,10 @@ async function generateImage(prompt) {
     cookieHeader = cookieRaw;
   }
 
+  // Project ID input se lo
+  const projectId = document.getElementById('projectIdInput')?.value?.trim() || PROJECT_ID;
+  if (!projectId) throw new Error('Project ID daalen pehle!');
+  
   const batchId = crypto.randomUUID();
 
   const body = {
@@ -472,7 +485,7 @@ async function generateImage(prompt) {
     body: JSON.stringify({
       prompt: prompt,
       cookies: cookieHeader,
-      projectId: PROJECT_ID,
+      projectId: projectId,
       batchId: batchId
     })
   });
