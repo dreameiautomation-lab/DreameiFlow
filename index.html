@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FlowMatic — Bulk Image Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red: #c0001a;
+      --red-dark: #8b0000;
+      --red-light: #ff2a2a;
+      --bg: #080808;
+      --bg2: #111111;
+      --bg3: #1a1a1a;
+      --border: #222;
+      --text: #e0e0e0;
+      --text2: #888;
+      --text3: #444;
+      --green: #22c55e;
+    }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* NAV */
+    .nav { background: linear-gradient(135deg, #0d0000, #1a0000); border-bottom: 1.5px solid var(--red); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-icon { width: 36px; height: 36px; background: var(--red); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .nav-title { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: 0.5px; }
+    .nav-badge { background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+
+    /* SCREENS */
+    .screen { display: none; max-width: 600px; margin: 0 auto; padding: 32px 20px; }
+    .screen.active { display: block; }
+
+    /* AUTH SCREEN */
+    .auth-card { background: var(--bg2); border: 1.5px solid var(--border); border-radius: 16px; padding: 40px 32px; text-align: center; }
+    .auth-icon { font-size: 52px; margin-bottom: 16px; }
+    .auth-title { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .auth-sub { font-size: 14px; color: var(--text2); margin-bottom: 28px; line-height: 1.6; }
+    .trial-badge { display: inline-block; background: #1a0f00; border: 1px solid #fb923c; color: #fb923c; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 20px; margin-bottom: 24px; }
+    .code-input { width: 100%; padding: 16px; background: var(--bg3); border: 1.5px solid var(--border); border-radius: 12px; color: #fff; font-size: 24px; letter-spacing: 8px; text-align: center; outline: none; margin-bottom: 14px; transition: border-color 0.2s; }
+    .code-input:focus { border-color: var(--red); }
+    .code-input::placeholder { letter-spacing: 2px; font-size: 14px; color: var(--text3); }
+    .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--red), var(--red-dark)); color: #fff; font-size: 14px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; transition: opacity 0.2s; letter-spacing: 0.5px; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .auth-error { margin-top: 12px; padding: 10px 16px; border-radius: 10px; font-size: 13px; display: none; }
+    .auth-error.show { display: block; }
+    .auth-error.invalid { background: #2a0000; color: #ff6666; border: 1px solid #5a0000; }
+    .auth-error.used { background: #1a1a00; color: #ffaa00; border: 1px solid #3a3a00; }
+    .auth-error.network { background: #001020; color: #66aaff; border: 1px solid #003050; }
+
+    /* MAIN SCREEN */
+    .section { background: var(--bg2); border: 1.5px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+    .section-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+    .section-title span { font-size: 14px; }
+    textarea, .code-area { width: 100%; background: var(--bg3); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-size: 13px; padding: 12px; outline: none; resize: none; line-height: 1.7; transition: border-color 0.2s; font-family: 'SF Mono', 'Courier New', monospace; }
+    textarea:focus, .code-area:focus { border-color: var(--red); }
+    textarea::placeholder { color: var(--text3); }
+    .cookie-area { height: 100px; font-size: 11px; }
+    .prompts-area { height: 140px; }
+    .hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
+    .hint span { color: var(--red); }
+    .delay-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+    .delay-row label { font-size: 12px; color: var(--text2); flex-shrink: 0; }
+    input[type="range"] { flex: 1; accent-color: var(--red); }
+    .delay-val { font-size: 13px; color: var(--red); font-weight: 700; min-width: 36px; text-align: right; }
+
+    /* BUTTONS */
+    .btn-row { display: flex; gap: 10px; margin-top: 4px; }
+    .btn-start { flex: 1; padding: 14px; background: linear-gradient(135deg, var(--red), var(--red-dark)); color: #fff; font-size: 14px; font-weight: 700; border: none; border-radius: 12px; cursor: pointer; }
+    .btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-pause { padding: 14px 18px; background: var(--bg3); border: 1.5px solid var(--border); color: var(--text2); font-size: 14px; border-radius: 12px; cursor: pointer; display: none; }
+    .btn-stop { padding: 14px 18px; background: var(--bg3); border: 1.5px solid var(--red); color: #ff4444; font-size: 14px; border-radius: 12px; cursor: pointer; display: none; }
+
+    /* PROGRESS */
+    .progress-section { display: none; }
+    .progress-section.show { display: block; }
+    .prog-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .prog-label { font-size: 13px; color: var(--text2); }
+    .prog-num { font-size: 14px; font-weight: 700; color: var(--red); }
+    .prog-bar-bg { background: var(--bg3); border-radius: 6px; height: 6px; overflow: hidden; margin-bottom: 8px; }
+    .prog-bar { background: linear-gradient(90deg, var(--red), var(--red-light)); height: 100%; width: 0%; border-radius: 6px; transition: width 0.4s ease; }
+    .prog-text { font-size: 12px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* LOG */
+    .log-wrap { max-height: 160px; overflow-y: auto; margin-top: 12px; }
+    .log-wrap::-webkit-scrollbar { width: 3px; }
+    .log-wrap::-webkit-scrollbar-thumb { background: var(--red); border-radius: 2px; }
+    .log-item { font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--bg3); color: var(--text3); }
+    .log-item.success { color: var(--green); }
+    .log-item.error { color: #ff4444; }
+    .log-item.info { color: #4488ff; }
+
+    /* DONE BANNER */
+    .done-banner { display: none; background: #0a2a0a; border: 1px solid var(--green); border-radius: 12px; padding: 16px; text-align: center; margin-top: 12px; }
+    .done-banner.show { display: block; }
+    .done-banner p { color: var(--green); font-size: 15px; font-weight: 600; }
+
+    /* TIMER */
+    .timer-bar { background: #1a0f00; border-bottom: 1px solid #fb923c; padding: 6px 24px; font-size: 12px; color: #fb923c; font-weight: 600; text-align: center; display: none; }
+    .timer-bar.show { display: block; }
+
+    /* FOOTER */
+    footer { text-align: center; padding: 20px; font-size: 11px; color: var(--text3); letter-spacing: 1px; border-top: 1px solid var(--bg3); margin-top: 20px; }
+
+    /* STEP INDICATORS */
+    .steps { display: flex; gap: 8px; margin-bottom: 16px; }
+    .step { flex: 1; padding: 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; text-align: center; font-size: 11px; color: var(--text3); }
+    .step.active { border-color: var(--red); color: var(--red); background: #1a0000; }
+    .step.done { border-color: var(--green); color: var(--green); background: #0a1a0a; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">
+    <div class="nav-icon">⚡</div>
+    <span class="nav-title">FlowMatic</span>
+  </div>
+  <span class="nav-badge">PRO</span>
+</nav>
+
+<div class="timer-bar" id="timerBar">⏱ Trial: 30:00</div>
+
+<!-- AUTH SCREEN -->
+<div class="screen active" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-icon">🔐</div>
+    <div class="auth-title">Activation Required</div>
+    <div class="auth-sub">FlowMatic use karne ke liye<br>apna activation code enter karein</div>
+    <div class="trial-badge">⚡ 30 Minute Free Trial Available</div>
+    <input type="text" class="code-input" id="codeInput" placeholder="Enter code" maxlength="8">
+    <button class="btn-primary" id="authBtn">Activate</button>
+    <div class="auth-error" id="authError"></div>
+  </div>
+</div>
+
+<!-- MAIN SCREEN -->
+<div class="screen" id="mainScreen">
+
+  <div class="steps">
+    <div class="step done" id="step1">✓ Activated</div>
+    <div class="step active" id="step2">2. Cookies</div>
+    <div class="step" id="step3">3. Prompts</div>
+    <div class="step" id="step4">4. Generate</div>
+  </div>
+
+  <!-- COOKIES -->
+  <div class="section">
+    <div class="section-title"><span>🍪</span> Google Flow Cookies</div>
+    <textarea class="cookie-area" id="cookieInput" placeholder='Paste cookies here — Cookie-Editor extension se export karo aur paste karo...'></textarea>
+    <div class="hint">Cookie-Editor extension → Export → Yahan paste karo</div>
+  </div>
+
+  <!-- PROMPTS -->
+  <div class="section">
+    <div class="section-title"><span>📋</span> Prompts <span style="color:var(--red);font-size:10px;margin-left:4px" id="promptCount">(0 prompts)</span></div>
+    <textarea class="prompts-area" id="promptsInput" placeholder="A beautiful sunset over mountains&#10;A cute cat sitting on a chair&#10;Abstract colorful art...&#10;&#10;(Ek line = Ek image)"></textarea>
+    <div class="hint">Total: <span id="totalCount">0</span> prompts</div>
+    <div class="delay-row">
+      <label>⏱ Delay:</label>
+      <input type="range" id="delaySlider" min="5" max="30" value="10">
+      <span class="delay-val" id="delayVal">10s</span>
+    </div>
+  </div>
+
+  <!-- BUTTONS -->
+  <div class="btn-row">
+    <button class="btn-start" id="startBtn">▶ Generate Shuru Karo</button>
+    <button class="btn-pause" id="pauseBtn">⏸</button>
+    <button class="btn-stop" id="stopBtn">⏹</button>
+  </div>
+
+  <!-- PROGRESS -->
+  <div class="section progress-section" id="progressSection" style="margin-top:16px">
+    <div class="prog-top">
+      <span class="prog-label">Progress</span>
+      <span class="prog-num" id="progNum">0 / 0</span>
+    </div>
+    <div class="prog-bar-bg"><div class="prog-bar" id="progBar"></div></div>
+    <div class="prog-text" id="progText">Shuru hone ka intezaar...</div>
+    <div class="log-wrap" id="logWrap"></div>
+    <div class="done-banner" id="doneBanner"><p>🎉 Saari images download ho gayi!</p></div>
+  </div>
+
+</div>
+
+<footer>FLOWMATIC • BULK IMAGE GENERATOR FOR GOOGLE FLOW</footer>
+
+<script>
+// ============ CONFIG ============
+const SHEET_ID = "1AdaqLyll322By7U6w51K8pFnHgfYnS2fo1gQ6XGnPOo";
+const TRIAL_MINUTES = 30;
+const PROJECT_ID = "ee852bbc-eae7-4fc7-9f4b-47b775b10fb6";
+const API_URL = `https://aisandbox-pa.googleapis.com/v1/projects/${PROJECT_ID}/flowMedia:batchGenerateImages`;
+
+// ============ AUTH ============
+async function fetchCodes() {
+  const urls = [
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet1&t=${Date.now()}`,
+    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0&t=${Date.now()}`,
+  ];
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text.includes('DOCTYPE') || text.includes('allowlist')) continue;
+      const codes = text.trim().split('\n').slice(1)
+        .map(l => l.replace(/"/g, '').trim())
+        .filter(v => v && /^\d+$/.test(v));
+      if (codes.length) return codes;
+    } catch(e) {}
+  }
+  return null;
+}
+
+async function getDeviceId() {
+  const fp = [navigator.userAgent, navigator.language, screen.width+'x'+screen.height, Intl.DateTimeFormat().resolvedOptions().timeZone].join('|');
+  let hash = 0;
+  for (let i = 0; i < fp.length; i++) { hash = ((hash << 5) - hash) + fp.charCodeAt(i); hash |= 0; }
+  return Math.abs(hash).toString(36);
+}
+
+async function verifyCode(code) {
+  const codes = await fetchCodes();
+  if (!codes) return { ok: false, err: 'network' };
+
+  const used = JSON.parse(localStorage.getItem('fm_used') || '[]');
+  if (used.includes(code)) return { ok: false, err: 'used' };
+
+  if (codes.includes(code)) {
+    const now = Date.now();
+    used.push(code);
+    const deviceId = await getDeviceId();
+    localStorage.setItem('fm_used', JSON.stringify(used));
+    localStorage.setItem('fm_auth_' + deviceId, JSON.stringify({
+      code, activatedAt: now, expiresAt: now + TRIAL_MINUTES * 60000, trial: true
+    }));
+    return { ok: true };
+  }
+  return { ok: false, err: 'invalid' };
+}
+
+async function checkAuth() {
+  const deviceId = await getDeviceId();
+  const raw = localStorage.getItem('fm_auth_' + deviceId);
+  if (!raw) return { verified: false };
+  const data = JSON.parse(raw);
+  if (data.trial) {
+    const rem = data.expiresAt - Date.now();
+    if (rem <= 0) { localStorage.removeItem('fm_auth_' + deviceId); return { verified: false, expired: true }; }
+    return { verified: true, trial: true, remainingMs: rem };
+  }
+  return { verified: true };
+}
+
+// ============ UI INIT ============
+async function init() {
+  const auth = await checkAuth();
+  if (!auth.verified) {
+    showScreen('auth');
+    if (auth.expired) {
+      document.getElementById('authError').textContent = '⌛ Trial expire ho gaya — naya code use karein';
+      document.getElementById('authError').className = 'auth-error used show';
+    }
+    setupAuth();
+    return;
+  }
+  showScreen('main');
+  if (auth.trial) startTimer(auth.remainingMs);
+  setupMain();
+}
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(name + 'Screen').classList.add('active');
+}
+
+function setupAuth() {
+  const btn = document.getElementById('authBtn');
+  const input = document.getElementById('codeInput');
+  const err = document.getElementById('authError');
+
+  btn.addEventListener('click', async () => {
+    const code = input.value.trim();
+    if (!code) return;
+    btn.disabled = true;
+    btn.textContent = 'Checking...';
+    err.className = 'auth-error';
+
+    const result = await verifyCode(code);
+    if (result.ok) {
+      btn.textContent = '✓ Activated!';
+      btn.style.background = '#166534';
+      setTimeout(() => init(), 800);
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Activate';
+      err.classList.add('show');
+      if (result.err === 'used') { err.className = 'auth-error used show'; err.textContent = '⚠️ Yeh code already use ho chuka hai'; }
+      else if (result.err === 'network') { err.className = 'auth-error network show'; err.textContent = '🌐 Internet check karein'; }
+      else { err.className = 'auth-error invalid show'; err.textContent = '❌ Galat code — dobara try karein'; }
+    }
+  });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+}
+
+let timerInterval;
+function startTimer(ms) {
+  const bar = document.getElementById('timerBar');
+  bar.classList.add('show');
+  function update() {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    bar.textContent = `⏱ Trial: ${m}:${s.toString().padStart(2,'0')} remaining`;
+    if (ms <= 0) { clearInterval(timerInterval); showScreen('auth'); return; }
+    ms -= 1000;
+  }
+  update();
+  timerInterval = setInterval(update, 1000);
+}
+
+// ============ MAIN APP ============
+let isRunning = false, isPaused = false, currentIdx = 0, promptsList = [], delayMs = 10000;
+
+function setupMain() {
+  const prompts = document.getElementById('promptsInput');
+  const total = document.getElementById('totalCount');
+  const delay = document.getElementById('delaySlider');
+  const delayVal = document.getElementById('delayVal');
+
+  prompts.addEventListener('input', () => {
+    const lines = prompts.value.split('\n').filter(l => l.trim());
+    total.textContent = lines.length;
+    document.getElementById('promptCount').textContent = `(${lines.length} prompts)`;
+  });
+
+  delay.addEventListener('input', () => {
+    delayVal.textContent = delay.value + 's';
+  });
+
+  document.getElementById('startBtn').addEventListener('click', startGeneration);
+  document.getElementById('pauseBtn').addEventListener('click', togglePause);
+  document.getElementById('stopBtn').addEventListener('click', stopGeneration);
+
+  // Step 2 active karo jab cookies daali
+  document.getElementById('cookieInput').addEventListener('input', () => {
+    if (document.getElementById('cookieInput').value.trim()) {
+      document.getElementById('step2').className = 'step done';
+      document.getElementById('step3').className = 'step active';
+    }
+  });
+
+  document.getElementById('promptsInput').addEventListener('input', () => {
+    const lines = document.getElementById('promptsInput').value.split('\n').filter(l => l.trim());
+    if (lines.length > 0) {
+      document.getElementById('step3').className = 'step done';
+      document.getElementById('step4').className = 'step active';
+    }
+  });
+}
+
+async function startGeneration() {
+  const cookieRaw = document.getElementById('cookieInput').value.trim();
+  const promptsRaw = document.getElementById('promptsInput').value;
+  const lines = promptsRaw.split('\n').filter(l => l.trim());
+
+  if (!cookieRaw) { addLog('❌ Cookies paste karein pehle!', 'error'); return; }
+  if (!lines.length) { addLog('❌ Koi prompt nahi!', 'error'); return; }
+
+  delayMs = parseInt(document.getElementById('delaySlider').value) * 1000;
+  promptsList = lines;
+  currentIdx = 0;
+  isRunning = true;
+  isPaused = false;
+
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('pauseBtn').style.display = 'block';
+  document.getElementById('stopBtn').style.display = 'block';
+  document.getElementById('progressSection').classList.add('show');
+  document.getElementById('doneBanner').classList.remove('show');
+  document.getElementById('logWrap').innerHTML = '';
+  document.getElementById('step4').className = 'step active';
+
+  updateProgress(0, lines.length, 'Shuru ho raha hai...');
+  addLog(`${lines.length} prompts queue mein`, 'info');
+  runNext();
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  document.getElementById('pauseBtn').textContent = isPaused ? '▶' : '⏸';
+  addLog(isPaused ? 'Paused' : 'Resume ho gaya', 'info');
+  if (!isPaused) runNext();
+}
+
+function stopGeneration() {
+  isRunning = false; isPaused = false;
+  resetUI();
+  addLog('Ruk gaya', 'error');
+}
+
+async function runNext() {
+  if (!isRunning || isPaused) return;
+  if (currentIdx >= promptsList.length) {
+    isRunning = false;
+    resetUI();
+    document.getElementById('doneBanner').classList.add('show');
+    document.getElementById('step4').className = 'step done';
+    addLog('🎉 Saari images complete!', 'success');
+    return;
+  }
+
+  const prompt = promptsList[currentIdx];
+  updateProgress(currentIdx + 1, promptsList.length, `"${prompt.substring(0, 50)}"`);
+  addLog(`${currentIdx + 1}/${promptsList.length}: Generating...`, 'info');
+
+  try {
+    await generateImage(prompt);
+    addLog(`✅ Image ${currentIdx + 1} done!`, 'success');
+    currentIdx++;
+    await sleep(delayMs);
+    runNext();
+  } catch(e) {
+    addLog(`❌ ${currentIdx + 1}: ${e.message}`, 'error');
+    currentIdx++;
+    await sleep(2000);
+    runNext();
+  }
+}
+
+async function generateImage(prompt) {
+  const cookieRaw = document.getElementById('cookieInput').value.trim();
+
+  // Cookies parse karo
+  let cookieHeader = '';
+  try {
+    const parsed = JSON.parse(cookieRaw);
+    if (Array.isArray(parsed)) {
+      cookieHeader = parsed.map(c => `${c.name}=${c.value}`).join('; ');
+    } else {
+      cookieHeader = cookieRaw;
+    }
+  } catch(e) {
+    cookieHeader = cookieRaw;
+  }
+
+  const batchId = crypto.randomUUID();
+
+  const body = {
+    clientContext: {
+      recipientContext: {
+        projectId: PROJECT_ID,
+        tool: "FLOWML"
+      }
+    },
+    batchId: batchId,
+    cameFromBuild: true,
+    requests: [{
+      prompt: prompt,
+      sampleCount: 1,
+      aspectRatio: "IMAGE_ASPECT_RATIO_LANDSCAPE"
+    }]
+  };
+
+  // Vercel proxy se call karo (CORS fix)
+  const res = await fetch('/api/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: prompt,
+      cookies: cookieHeader,
+      projectId: PROJECT_ID,
+      batchId: batchId
+    })
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    if (res.status === 401 || res.status === 403) throw new Error('Cookies expire ho gayi — dobara copy karein');
+    throw new Error(`API Error ${res.status} — Cookies check karein`);
+  }
+
+  const data = await res.json();
+
+  // Image URL dhundho response mein
+  const imgUrl = findImageUrl(data);
+  if (!imgUrl) throw new Error('Image URL response mein nahi mila');
+
+  // Download karo
+  await downloadImageUrl(imgUrl, currentIdx + 1);
+}
+
+function findImageUrl(data) {
+  // Recursively response mein image URL dhundho
+  const str = JSON.stringify(data);
+  const matches = str.match(/https?:\/\/[^"]+\.(jpg|jpeg|png|webp)[^"]*/gi);
+  if (matches && matches.length > 0) return matches[0];
+
+  // Direct fields check
+  if (data.images) return data.images[0]?.url || data.images[0];
+  if (data.responses) return findImageUrl(data.responses[0]);
+  if (data.predictions) return data.predictions[0]?.bytesBase64Encoded ? 'base64:' + data.predictions[0].bytesBase64Encoded : null;
+  return null;
+}
+
+async function downloadImageUrl(url, index) {
+  if (url.startsWith('base64:')) {
+    const base64 = url.replace('base64:', '');
+    const byteChars = atob(base64);
+    const byteArr = new Uint8Array(byteChars.length);
+    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+    const blob = new Blob([byteArr], { type: 'image/png' });
+    const blobUrl = URL.createObjectURL(blob);
+    triggerDownload(blobUrl, `flowmatic_${String(index).padStart(3,'0')}.png`);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    return;
+  }
+
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    triggerDownload(blobUrl, `flowmatic_${String(index).padStart(3,'0')}.png`);
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch(e) {
+    triggerDownload(url, `flowmatic_${String(index).padStart(3,'0')}.png`);
+  }
+}
+
+function triggerDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 1000);
+}
+
+function updateProgress(current, total, text) {
+  const num = document.getElementById('progNum');
+  const bar = document.getElementById('progBar');
+  const txt = document.getElementById('progText');
+  if (num) num.textContent = `${current} / ${total}`;
+  if (bar) bar.style.width = (total > 0 ? (current/total)*100 : 0) + '%';
+  if (txt) txt.textContent = text;
+}
+
+function addLog(text, type = '') {
+  const wrap = document.getElementById('logWrap');
+  if (!wrap) return;
+  const item = document.createElement('div');
+  item.className = `log-item ${type}`;
+  item.textContent = text;
+  wrap.prepend(item);
+  while (wrap.children.length > 20) wrap.removeChild(wrap.lastChild);
+}
+
+function resetUI() {
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('pauseBtn').style.display = 'none';
+  document.getElementById('pauseBtn').textContent = '⏸';
+  document.getElementById('stopBtn').style.display = 'none';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+init();
+</script>
+</body>
+</html>
